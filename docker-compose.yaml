@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  db-xml-fetcher:
+    build: .
+    container_name: db-xml-fetcher
+    volumes:
+      - storage:/app/output    # Maps the ./output folder on the host to /app/output in the container
+    restart: unless-stopped     # Automatically restart the container unless stopped manually
+
+volumes:
+  storage:
+    driver: local
+    driver_opts:
+      type: cifs
+      o: username=docker,password=${NAS_PASSWORD},uid=999,gid=999,file_mode=0700,dir_mode=0700,noperm,rw
+      device: "//172.16.12.75/docker/Bahnmining"

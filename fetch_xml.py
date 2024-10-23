@@ -1,5 +1,6 @@
 import requests
 import time
+import logging
 from datetime import datetime
 
 # API base URL
@@ -21,11 +22,14 @@ headers = {
     'DB-Client-Id': 'cd8329b6d08c51ad68f63e830783bfbb'
 }
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Function to make the API request and save the XML response
 def fetch_and_save_data(station_code, station_name):
     # Construct the full API URL
     url = base_url + station_code
-    print(f"Fetching data for {station_name} (station code: {station_code})")
+    logging.info(f"Fetching data for {station_name} (station code: {station_code})")
 
     # Make the request
     response = requests.get(url, headers=headers)
@@ -35,12 +39,12 @@ def fetch_and_save_data(station_code, station_name):
         # Generate a timestamp for the filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         # Save the raw XML content to a file, with the station name and timestamp in the filename
-        filename = f'api_response_{station_name}_{timestamp}.xml'
+        filename = f'out/api_response_{station_name}_{timestamp}.xml'
         with open(filename, 'wb') as file:
             file.write(response.content)
-        print(f"XML response saved to '{filename}'")
+        logging.info(f"XML response saved to '{filename}'")
     else:
-        print(f"API request for {station_name} failed with status code {response.status_code}")
+        logging.error(f"API request for {station_name} failed with status code {response.status_code}")
 
 # Main loop to fetch data for each station
 if __name__ == '__main__':

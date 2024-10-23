@@ -8,7 +8,10 @@ base_url = 'https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/
 # Station codes and their corresponding names
 stations = {
     '8000244': 'Mannheim_Hbf',
-    '8000250': 'Wiesbaden_Hbf'
+    '8000250': 'Wiesbaden_Hbf',
+    '8000134': 'Trier_Hbf',
+    '8000240': 'Mainz_Hbf',
+    '8000105': 'Frankfurt_Main_Hbf',
 }
 
 # API headers

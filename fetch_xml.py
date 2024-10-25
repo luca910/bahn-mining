@@ -38,10 +38,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Function to make the API request and save the XML response
 def fetch_and_save_data(station_code, station_name, api_type, api_url):
 
-    if(api_type == 'plan'):
+    if(api_type == 'fchg'):
         # Construct the full API URL
         url = api_url + station_code
-    if(api_type == 'fchg'):
+    if(api_type == 'plan'):
         #date in yymmdd
         current_date = datetime.now().strftime("%y%m%d")
         current_hour = datetime.now().strftime("%H")
@@ -73,6 +73,6 @@ if __name__ == '__main__':
     while True:
         for station_code, station_name in stations.items():
             for api_type, api_url in api_urls.items():
-                fetch_and_save_data(station_code, station_name)
+                fetch_and_save_data(station_code, station_name, api_type, api_url)
                 # Wait for 60 seconds between each request to respect rate limits
-                time.sleep(120)
+            time.sleep(120)

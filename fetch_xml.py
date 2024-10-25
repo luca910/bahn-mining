@@ -3,9 +3,6 @@ import time
 import logging
 from datetime import datetime
 
-from partd.file import filename
-from sympy.physics.units import current
-
 # API base URL
 base_url = 'https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/fchg/'
 

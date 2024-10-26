@@ -6,6 +6,13 @@ from datetime import datetime
 # API base URL
 base_url = 'https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/fchg/'
 
+plan_url = 'https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/plan/'
+
+api_urls = {
+    'plan': plan_url,
+    'fchg': base_url
+}
+
 # Station codes and their corresponding names
 stations = {
     '8000244': 'Mannheim_Hbf',
@@ -26,9 +33,18 @@ headers = {
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Function to make the API request and save the XML response
-def fetch_and_save_data(station_code, station_name):
-    # Construct the full API URL
-    url = base_url + station_code
+def fetch_and_save_data(station_code, station_name, api_type, api_url):
+
+    if(api_type == 'fchg'):
+        # Construct the full API URL
+        url = api_url + station_code
+    if(api_type == 'plan'):
+        #date in yymmdd
+        current_date = datetime.now().strftime("%y%m%d")
+        current_hour = datetime.now().strftime("%H")
+        # Construct the full API URL
+        url = api_url + station_code + '/' + current_date + '/'+ current_hour
+
     logging.info(f"Fetching data for {station_name} (station code: {station_code})")
 
     # Make the request
@@ -39,7 +55,10 @@ def fetch_and_save_data(station_code, station_name):
         # Generate a timestamp for the filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         # Save the raw XML content to a file, with the station name and timestamp in the filename
-        filename = f'out/api_response_{station_name}_{timestamp}.xml'
+        if(api_type == 'plan'):
+            filename=f'out/api_response_{station_name}_{timestamp}_plan'+ current_hour +'.xml'
+        if(api_type == 'fchg'):
+            filename=f'out/api_response_{station_name}_{timestamp}_fchg.xml'
         with open(filename, 'wb') as file:
             file.write(response.content)
         logging.info(f"XML response saved to '{filename}'")
@@ -50,6 +69,7 @@ def fetch_and_save_data(station_code, station_name):
 if __name__ == '__main__':
     while True:
         for station_code, station_name in stations.items():
-            fetch_and_save_data(station_code, station_name)
-            # Wait for 60 seconds between each request to respect rate limits
-            time.sleep(60)
+            for api_type, api_url in api_urls.items():
+                fetch_and_save_data(station_code, station_name, api_type, api_url)
+                # Wait for 60 seconds between each request to respect rate limits
+            time.sleep(120)

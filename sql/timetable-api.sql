@@ -20,9 +20,9 @@ use bahn;
 
 CREATE TABLE IF NOT EXISTS `event`
 (
-    event_id         INT AUTO_INCREMENT PRIMARY KEY COMMENT 'Eindeutige ID für jedes Ereignis',
-    timetableStop_id VARCHAR(50) COMMENT 'Eindeutige ID für jedes Ereignis',
-    event_type       VARCHAR(50) DEFAULT NULL COMMENT 'Event type. Arrival or departure.',
+    `event_id`         INT AUTO_INCREMENT PRIMARY KEY COMMENT 'Eindeutige ID für jedes Ereignis',
+    `timetableStop_id` VARCHAR(50) COMMENT 'Eindeutige ID für jedes Ereignis',
+    `event_type`       VARCHAR(50) DEFAULT NULL COMMENT 'Event type. Arrival or departure.',
     `cde`    TEXT DEFAULT NULL COMMENT 'Changed distant endpoint.',
     `clt`    TEXT DEFAULT NULL COMMENT 'Cancellation time. Time when the cancellation of this stop was created. The time, in ten digit &#39;YYMMddHHmm&#39; format, e.g. &#39;1404011437&#39; for 14:37 on April the 1st of 2014.',
     `cp`     TEXT DEFAULT NULL COMMENT 'Changed platform.',
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `timetableStop`
 
 CREATE TABLE IF NOT EXISTS `distributorMessage`
 (
-    distributorMessage_id    INT AUTO_INCREMENT PRIMARY KEY COMMENT 'Eindeutige ID für jede Nachricht',
+    `distributorMessage_id`    INT AUTO_INCREMENT PRIMARY KEY COMMENT 'Eindeutige ID für jede Nachricht',
     `int` TEXT DEFAULT NULL COMMENT 'Internal text.',
     `n`   TEXT DEFAULT NULL COMMENT 'Distributor name.',
     `t`   TEXT DEFAULT NULL,
@@ -92,8 +92,8 @@ CREATE TABLE IF NOT EXISTS `distributorMessage`
 
 CREATE TABLE IF NOT EXISTS `message`
 (
-    timetableStop_id VARCHAR(50),
-    event_id         INT DEFAULT NULL,
+    `timetableStop_id` VARCHAR(50),
+    `event_id`         INT DEFAULT NULL,
     `c`    INT  DEFAULT NULL COMMENT 'Code.',
     `cat`  TEXT DEFAULT NULL COMMENT 'Category.',
     `del`  INT  DEFAULT NULL COMMENT 'Deleted.',
@@ -294,7 +294,7 @@ CREATE TABLE IF NOT EXISTS `tripReference`
 
 CREATE TABLE IF NOT EXISTS `tripLabel`
 (
-    timetableStop_id VARCHAR(50) COMMENT 'Eindeutige ID für jede Trip-Bezeichnung',
+    `timetableStop_id` VARCHAR(50) COMMENT 'Eindeutige ID für jede Trip-Bezeichnung',
     `c` TEXT NOT NULL COMMENT 'Category. Trip category, e.g. \&quot;ICE\&quot; or \&quot;RE\&quot;.',
     `f` TEXT DEFAULT NULL COMMENT 'Filter flags.',
     `n` TEXT NOT NULL COMMENT 'Trip/train number, e.g. \&quot;4523\&quot;.',

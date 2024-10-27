@@ -76,14 +76,71 @@ with connection.cursor() as cursor:
                 ar_pt = child.get('pt')
                 ar_tra = child.get('tra')
                 ar_wings = child.get('wings')
+                # Insert data into schedule_entries
+                cursor.execute(
+                    """
+                   INSERT INTO `event`(`timetableStop_id`, `event_type` ,`cde`, `clt`, `cp`, `cpth`, `cs`, `ct`, `dc`, `hi`, `l`, `m`, `pde`, `pp`, `ppth`, `ps`, `pt`, `tra`, `wings`) VALUES (%s,%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                    """,(timetableStop_id, child.tag, ar_cde, ar_clt, ar_cp, ar_cpth, ar_cs, ar_ct, ar_dc, ar_hi, ar_l, ar_m, ar_pde, ar_pp, ar_ppth, ar_ps, ar_pt, ar_tra, ar_wings)
+                )
+                if len(child.findall("*")) > 0 :
+                    subchildren = child.findall('*')
+                    # Execute the query
+                    cursor.execute("SELECT event_id FROM event ORDER BY event_id DESC LIMIT 1")
+                    # Fetch the result
+                    result = cursor.fetchone()[0]
+                    for subchild in subchildren:
+                        if subchild.tag == 'm':
+                            m_event_id = result
+                            m_c = child.get('c')
+                            m_cat = child.get('cat')
+                            m_del = child.get('del')
+                            m_dm = child.get('dm')
+                            m_ec = child.get('ec')
+                            m_elnk = child.get('elnk')
+                            m_ext = child.get('ext')
+                            m_from = child.get('from')
+                            m_id = child.get('id')
+                            m_int = child.get('int')
+                            m_o = child.get('o')
+                            m_pr = child.get('pr')
+                            m_t = child.get('t')
+                            m_tl = child.get('tl')
+                            m_to = child.get('to')
+                            m_ts = child.get('ts')
 
+                            # Insert data into schedule_entries
+                            cursor.execute(
+                                """
+                               INSERT INTO `message`(`timetableStop_id`,`event_id`,`c`, `cat`, `del`, `dm`, `ec`, `elnk`, `ext`, `from`, `id`, `int`, `o`, `pr`, `t`, `tl`, `to`, `ts`) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s);
+                               """,(timetableStop_id, m_event_id, m_c, m_cat, m_del, m_dm, m_ec, m_elnk, m_ext, m_from, m_id, m_int, m_o, m_pr, m_t, m_tl, m_to, m_ts)
+                            )
+
+            if child.tag == 'm':
+                m_c = child.get('c')
+                m_cat = child.get('cat')
+                m_del = child.get('del')
+                m_dm = child.get('dm')
+                m_ec = child.get('ec')
+                m_elnk = child.get('elnk')
+                m_ext = child.get('ext')
+                m_from = child.get('from')
+                m_id = child.get('id')
+                m_int = child.get('int')
+                m_o = child.get('o')
+                m_pr = child.get('pr')
+                m_t = child.get('t')
+                m_tl = child.get('tl')
+                m_to = child.get('to')
+                m_ts = child.get('ts')
 
                 # Insert data into schedule_entries
                 cursor.execute(
                     """
-                   INSERT INTO `event`(`timetableStop_id` ,`cde`, `clt`, `cp`, `cpth`, `cs`, `ct`, `dc`, `hi`, `l`, `m`, `pde`, `pp`, `ppth`, `ps`, `pt`, `tra`, `wings`) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
-                    """,(timetableStop_id, ar_cde, ar_clt, ar_cp, ar_cpth, ar_cs, ar_ct, ar_dc, ar_hi, ar_l, ar_m, ar_pde, ar_pp, ar_ppth, ar_ps, ar_pt, ar_tra, ar_wings)
+                   INSERT INTO `message`(`timetableStop_id`,`c`, `cat`, `del`, `dm`, `ec`, `elnk`, `ext`, `from`, `id`, `int`, `o`, `pr`, `t`, `tl`, `to`, `ts`) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s);
+                   """,(timetableStop_id, m_c, m_cat, m_del, m_dm, m_ec, m_elnk, m_ext, m_from, m_id, m_int, m_o, m_pr, m_t, m_tl, m_to, m_ts)
                 )
+
+
 
     connection.commit()
 connection.close()

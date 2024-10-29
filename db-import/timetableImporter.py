@@ -19,7 +19,7 @@ def importXMLs():
     # Iterate over each file
     for file in files:
         # Check if the file is an XML file
-        if file.endswith('.xml'):
+        if file.startswith('api_response_') and file.endswith('.xml'):
             print(path+'/'+file)
             # Import the XML file
             importXML(path+'/'+file)

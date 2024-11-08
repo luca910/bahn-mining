@@ -11,7 +11,7 @@ connection = pymysql.connect(
     database='bahn'
 )
 #import path
-path= '../out'
+path= 'trier'
 
 def importXMLs():
 
@@ -156,9 +156,7 @@ def importXML(path):
                        """,(timetableStop_id, m_c, m_cat, m_del, m_dm, m_ec, m_elnk, m_ext, m_from, m_id, m_int, m_o, m_pr, m_t, m_tl, m_to, m_ts)
                     )
 
-
-
-        connection.commit()
+    connection.commit()
 
 importXMLs()
 connection.close()

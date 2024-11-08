@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    platform: linux/arm64  # Explicitly target ARM64 for compatibility with M1 Pro
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bahn
+      MYSQL_USER: bahn
+      MYSQL_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - "/Volumes/Luca.m2/DHBW/Bahn Mining Projekt/volumes/mariadb:/var/lib/mysql"
+      - "./config/mariadb/my.cnf:/etc/mysql/my.cnf"  # Custom config for optimized performance
+    deploy:
+      resources:
+        limits:
+          memory: 6g       # Limit MariaDB container to use a max of 3 GB of RAM
+          cpus: "5"      # Limit container to use 1.5 vCPUs
+        reservations:
+          memory: 2g       # Reserve 2 GB of RAM for MariaDB
+          cpus: "1"        # Reserve 1 vCPU for MariaDB

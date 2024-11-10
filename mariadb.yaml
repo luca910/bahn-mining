@@ -13,6 +13,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
+      - "./sql/database-setup.sql:/docker-entrypoint-initdb.d/1.sql"
       - "/Volumes/Luca.m2/DHBW/Bahn Mining Projekt/volumes/mariadb:/var/lib/mysql"
       - "./config/mariadb/my.cnf:/etc/mysql/my.cnf"  # Custom config for optimized performance
     deploy:

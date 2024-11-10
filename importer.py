@@ -1,3 +1,4 @@
+import sys
 import xml.etree.ElementTree as ET
 import os
 import pymysql
@@ -10,8 +11,9 @@ connection = pymysql.connect(
     password='root',
     database='bahn'
 )
-#import path
-path= 'trier'
+
+
+
 
 def importPlanneds():
 
@@ -172,9 +174,11 @@ def importChanged(path):
 
     connection.commit()
 
-importPlanneds()
+for arg in sys.argv[1:]:
+    path = arg
+    importPlanneds()
 
-importChanges()
+    importChanges()
 
 
 #importXML("db-import/api_response_Trier_Hbf_20241103_162655_plan16.xml")

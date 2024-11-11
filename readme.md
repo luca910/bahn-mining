@@ -153,8 +153,8 @@ Diese Dokumentation beschreibt die verfügbaren Daten und Queries zur Analyse vo
 
 ## 7. Wahrscheinlichkeit Flex-Upgrade
 
-### 7.1 Wahrscheinlichkeit Flex-Preis-Erhöhung
-- **CSV-Datei:** `flex_preis_upgrade.csv`
+### 7.1 Wahrscheinlichkeit Aufhebung Zugindung
+- **CSV-Datei:** `wahrscheinlichkeit_aufhebung_zugbindung.csv`
 - **Spalten:**
     - `Bahnhof`
     - `Wahrscheinlichkeit` (%)

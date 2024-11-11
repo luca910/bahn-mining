@@ -1,6 +1,8 @@
 import sys
 import xml.etree.ElementTree as ET
 import os
+from datetime import datetime
+
 import pymysql
 
 
@@ -12,6 +14,12 @@ connection = pymysql.connect(
     database='bahn'
 )
 
+
+def calcSqlTimestamp(string):
+
+    dt = datetime.strptime(string, '%y%m%d%H%M')
+
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
 
@@ -52,12 +60,12 @@ def importPlanned(path):
                     trainNumber = child.get('n')
 
                 if child.tag == "ar":
-                    plannedArrival = child.get('pt')
+                    plannedArrival = calcSqlTimestamp(child.get('pt'))
                     plannedArrivalPlatform = child.get('pp')
                     arrivalLine = child.get('l')
                     plannedArrivalPath = child.get('ppth')
                 if child.tag == "dp":
-                    plannedDeparture = child.get('pt')
+                    plannedDeparture = calcSqlTimestamp(child.get('pt'))
                     plannedDeparturePlatform = child.get('pp')
                     departureLine = child.get('l')
                     plannedDeparturePath = child.get('ppth')
@@ -101,6 +109,7 @@ def importChanged(path):
             plannedArrival = plannedArrivalPlatform = plannedArrivalPath = None
             plannedDeparture = plannedDeparturePlatform = plannedDeparturePath = None
             cancellationTime = eventStatus = None
+            plannedArrival = plannedArrivalPlatform = arrivalLine = plannedArrivalPath = None
 
 
             for child in children:
@@ -122,11 +131,11 @@ def importChanged(path):
                     """, (fileTimestamp,timetableStop_id, eva, timetable_station, validFrom, validUntil, priority, category, messageId, messageType, messageCode, timestamp))
 
                 if child.tag == "ar":
-                    plannedArrival = child.get('pt')
+                    plannedArrival = calcSqlTimestamp(child.get('pt'))
                     plannedArrivalPlatform = child.get('pp')
                     arrivalLine = child.get('l')
                     plannedArrivalPath = child.get('ppth')
-                    changedArrival = child.get('ct')
+                    changedArrival = calcSqlTimestamp(child.get('ct'))
                     changedArrivalPlatform = child.get('cp')
                     changedArrivalPath = child.get('cpth')
 
@@ -148,15 +157,15 @@ def importChanged(path):
 
 
                 if child.tag == "dp":
-                    plannedDeparture = child.get('pt')
+                    plannedDeparture = calcSqlTimestamp(child.get('pt'))
                     plannedDeparturePlatform = child.get('pp')
                     departureLine = child.get('l')
                     plannedDeparturePath = child.get('ppth')
-                    changedDeparture = child.get('ct')
+                    changedDeparture = calcSqlTimestamp(child.get('ct'))
                     changedDeparturePlatform = child.get('cp')
                     changedDeparturePath = child.get('cpth')
 
-                    cancellationTime = child.get('clt')
+                    cancellationTime = calcSqlTimestamp(child.get('clt'))
                     eventStatus = child.get('cs')
 
                     grandchildren = child.findall('m')

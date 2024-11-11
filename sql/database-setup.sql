@@ -1,8 +1,6 @@
-drop
-database if exists bahn;
+drop database if exists bahn;
 create schema bahn;
-use
-bahn;
+use bahn;
 create table plannedstops
 (
     timetableStop_id         varchar(255)  default null,
@@ -25,7 +23,7 @@ create table plannedstops
 create table arrivalMessages
 (
     timetableStop_id       varchar(255)  default null,
-    station                  varchar(255)  default null,
+    station                varchar(255)  default null,
     eva                    varchar(255)  default null,
 
     changedArrivalPath     varchar(1000) default null,
@@ -60,8 +58,8 @@ create table departureMessages
     changedDeparturePlatform varchar(255)  default null,
     departureLine            varchar(255)  default null,
 
-    cancellationTime       varchar(255)  default null,
-    eventStatus            varchar(255)  default null,
+    cancellationTime         varchar(255)  default null,
+    eventStatus              varchar(255)  default null,
 
     message_id               varchar(255)  default null,
     messageType              varchar(255)  default null,
@@ -74,41 +72,176 @@ create table messages
 (
     timetableStop_id varchar(255) default null,
     eva              varchar(255) default null,
-    station                  varchar(255)  default null,
+    station          varchar(255) default null,
     validFrom        varchar(255) default null,
     validUntil       varchar(255) default null,
     priority         varchar(255) default null,
     category         varchar(255) default null,
-    message_id               varchar(255)  default null,
-    messageType              varchar(255)  default null,
-    messageCode              varchar(255)  default null,
-    timeStamp                varchar(255)  default null,
-    fileTimestamp            varchar(255)  default null
+    message_id       varchar(255) default null,
+    messageType      varchar(255) default null,
+    messageCode      varchar(255) default null,
+    timeStamp        varchar(255) default null,
+    fileTimestamp    varchar(255) default null
 );
 create view rmessages as
-      select distinct * from messages;
+select distinct *
+from messages;
 create view rDepartureMessages as
-      select distinct * from bahn.departureMessages;
+select distinct *
+from bahn.departureMessages;
 create view rArrivalMessages as
-select distinct * from arrivalMessages;
+select distinct *
+from arrivalMessages;
 create view rStops as
-select distinct timetableStop_id, station, filterFlag, tripType, owner, trainCategory, trainNumber, plannedArrival, plannedArrivalPlatform, arrivingLine, plannedDeparture, plannedDeparturePlatform, departingLine, plannedDeparturePath, plannedArrivalPath from plannedstops;
+select distinct timetableStop_id,
+                station,
+                filterFlag,
+                tripType,
+                owner,
+                trainCategory,
+                trainNumber,
+                plannedArrival,
+                plannedArrivalPlatform,
+                arrivingLine,
+                plannedDeparture,
+                plannedDeparturePlatform,
+                departingLine,
+                plannedDeparturePath,
+                plannedArrivalPath
+from plannedstops;
 create view latest_dp_messages as
 
-SELECT
-            timetableStop_id,
-            MAX(timeStamp) AS max_timestamp,
-            MAX(fileTimestamp) as max_fileTimestamp
-        FROM
-            rdeparturemessages
-        GROUP BY
-            timetableStop_id;
-select distinct `rdeparturemessages`.`timetableStop_id`     AS `timetableStop_id`,
+SELECT timetableStop_id,
+       MAX(timeStamp)     AS max_timestamp,
+       MAX(fileTimestamp) as max_fileTimestamp
+FROM rdeparturemessages
+GROUP BY timetableStop_id;
+
+create view latest_ar_messages as
+SELECT timetableStop_id,
+       MAX(timeStamp)     AS max_timestamp,
+       MAX(fileTimestamp) as max_fileTimestamp
+FROM rarrivalmessages
+GROUP BY timetableStop_id;
+
+/*select distinct `rdeparturemessages`.`timetableStop_id`     AS `timetableStop_id`,
                 `rdeparturemessages`.`station`              AS `station`,
                 `rdeparturemessages`.`eva`                  AS `eva`,
                 `rdeparturemessages`.`changedDepartureTime` AS `changedDepartureTime`,
                 `rdeparturemessages`.`cancellationTime`     AS `cancellationTime`,
                 `rdeparturemessages`.`timeStamp`            AS `timeStamp`,
-                rdeparturemessages.fileTimestamp as fileTimestamp
+                rdeparturemessages.fileTimestamp            as fileTimestamp
 from `bahn`.`rdeparturemessages`
-where `rdeparturemessages`.`changedDepartureTime` is not null
+where `rdeparturemessages`.`changedDepartureTime` is not null;*/
+
+#
+# Departure Superquery
+#
+create view dp_superquery as
+WITH filterd AS (SELECT DISTINCT departureMessages.timetableStop_id,
+                                 eva,
+                                 changedDepartureTime,
+                                 cancellationTime,
+                                 eventStatus
+                 FROM departureMessages
+                          JOIN latest_dp_messages
+                               ON departureMessages.timetableStop_id =
+                                  latest_dp_messages.timetableStop_id
+                                   AND departureMessages.timeStamp = max_timestamp
+                                   AND fileTimestamp = latest_dp_messages.max_fileTimestamp
+                 WHERE changedDepartureTime IS NOT NULL)
+SELECT filterd.timetableStop_id,
+       station,
+       eva,
+       SUBSTRING_INDEX(plannedDeparturePath, '|', -1)                       AS target,
+       trainCategory,
+       trainNumber,
+       departingLine,
+       rstops.plannedDeparture,
+       changedDepartureTime,
+       cancellationTime,
+       eventStatus,
+       TIMESTAMPDIFF(MINUTE, rstops.plannedDeparture, changedDepartureTime) AS departure_delay,
+
+       CASE
+           WHEN trainCategory = 'HLB' THEN 'Hessische Landesbahn'
+           WHEN trainCategory = 'VIA' THEN 'VIAS GmbH'
+           WHEN trainCategory IN ('RB', 'RE', 'BUS', 'N', 'S') THEN 'DB Regio AG'
+           WHEN trainCategory IN ('ICE', 'IC') THEN 'DB Fernverkehr AG'
+           WHEN trainCategory = 'TGV' THEN 'SNCF'
+           WHEN trainCategory = 'NJ' THEN 'ÖBB'
+           WHEN trainCategory = 'EC' THEN 'ÖBB'
+           WHEN trainCategory = 'RJ' THEN 'ÖBB'
+           WHEN trainCategory = 'EN' THEN 'ÖBB'
+           WHEN trainCategory = 'R' THEN 'ÖBB'
+           WHEN trainCategory = 'ALX' THEN 'Arriva'
+           WHEN trainCategory = 'FLX' THEN 'Flixtrain'
+           ELSE 'Other'
+           END                                                              AS operator,
+       CASE
+           WHEN departingLine REGEXP '^[A-Z]' THEN departingLine
+           WHEN departingLine is null THEN concat(station, '-',
+                                                  SUBSTRING_INDEX(plannedDeparturePath, '|', -1))
+           ELSE CONCAT(rstops.trainCategory, departingLine)
+           END                                                              AS Verbindung,
+       WEEK(changedDepartureTime)                                           AS week_number
+FROM filterd
+         JOIN rstops
+              ON filterd.timetableStop_id = rstops.timetableStop_id;
+
+
+#
+# Arrival Superquery
+#
+create view ar_superquery as
+WITH filterd AS (SELECT DISTINCT arrivalMessages.timetableStop_id,
+                                 eva,
+                                 changedArrivalTime,
+                                 cancellationTime,
+                                 eventStatus
+                 FROM arrivalMessages
+                          JOIN latest_ar_messages
+                               ON arrivalMessages.timetableStop_id =
+                                  latest_ar_messages.timetableStop_id
+                                   AND arrivalMessages.timeStamp = max_timestamp
+                                   AND fileTimestamp = latest_ar_messages.max_fileTimestamp
+                 WHERE changedArrivalTime IS NOT NULL)
+SELECT filterd.timetableStop_id,
+       station,
+       eva,
+       SUBSTRING_INDEX(plannedArrivalPath, '|', 0)                       AS start,
+       trainCategory,
+       trainNumber,
+       departingLine,
+       rstops.plannedArrival,
+       changedArrivalTime,
+       cancellationTime,
+       eventStatus,
+       TIMESTAMPDIFF(MINUTE, rstops.plannedArrival, changedArrivalTime) AS departure_delay,
+
+       CASE
+           WHEN trainCategory = 'HLB' THEN 'Hessische Landesbahn'
+           WHEN trainCategory = 'VIA' THEN 'VIAS GmbH'
+           WHEN trainCategory IN ('RB', 'RE', 'BUS', 'N', 'S') THEN 'DB Regio AG'
+           WHEN trainCategory IN ('ICE', 'IC') THEN 'DB Fernverkehr AG'
+           WHEN trainCategory = 'TGV' THEN 'SNCF'
+           WHEN trainCategory = 'NJ' THEN 'ÖBB'
+           WHEN trainCategory = 'EC' THEN 'ÖBB'
+           WHEN trainCategory = 'RJ' THEN 'ÖBB'
+           WHEN trainCategory = 'EN' THEN 'ÖBB'
+           WHEN trainCategory = 'R' THEN 'ÖBB'
+           WHEN trainCategory = 'ALX' THEN 'Arriva'
+           WHEN trainCategory = 'FLX' THEN 'Flixtrain'
+           ELSE 'Other'
+           END                                                              AS operator,
+       CASE
+           WHEN arrivingLine REGEXP '^[A-Z]' THEN arrivingLine
+           WHEN arrivingLine is null THEN concat(station, '-',
+                                                  SUBSTRING_INDEX(plannedArrivalPath, '|', 0))
+           ELSE CONCAT(rstops.trainCategory, arrivingLine)
+           END                                                              AS Verbindung,
+       WEEK(changedArrivalTime)                                           AS week_number
+FROM filterd
+         JOIN rstops
+              ON filterd.timetableStop_id = rstops.timetableStop_id;
+

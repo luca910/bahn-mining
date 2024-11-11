@@ -10,10 +10,10 @@ create table plannedstops
     owner                    varchar(255)  default null,
     trainCategory            varchar(255)  default null,
     trainNumber              varchar(255)  default null,
-    plannedArrival           varchar(255)  default null,
+    plannedArrival           timestamp  default null,
     plannedArrivalPlatform   varchar(255)  default null,
     arrivingLine             varchar(255)  default null,
-    plannedDeparture         varchar(255)  default null,
+    plannedDeparture         timestamp  default null,
     plannedDeparturePlatform varchar(255)  default null,
     departingLine            varchar(255)  default null,
     plannedDeparturePath     varchar(1000) default null,
@@ -28,13 +28,13 @@ create table arrivalMessages
 
     changedArrivalPath     varchar(1000) default null,
     plannedArrivalPath     varchar(1000) default null,
-    plannedArrivalTime     varchar(255)  default null,
-    changedArrivalTime     varchar(255)  default null,
+    plannedArrivalTime     timestamp  default null,
+    changedArrivalTime     timestamp default null,
     plannedArrivalPlatform varchar(255)  default null,
     changedArrivalPlatform varchar(255)  default null,
     arrivalLine            varchar(255)  default null,
 
-    cancellationTime       varchar(255)  default null,
+    cancellationTime       timestamp default null,
     eventStatus            varchar(255)  default null,
 
     message_id             varchar(255)  default null,
@@ -52,13 +52,13 @@ create table departureMessages
 
     changedDeparturePath     varchar(1000) default null,
     plannedDeparturePath     varchar(1000) default null,
-    plannedDepartureTime     varchar(255)  default null,
-    changedDepartureTime     varchar(255)  default null,
+    plannedDepartureTime     timestamp  default null,
+    changedDepartureTime     timestamp  default null,
     plannedDeparturePlatform varchar(255)  default null,
     changedDeparturePlatform varchar(255)  default null,
     departureLine            varchar(255)  default null,
 
-    cancellationTime         varchar(255)  default null,
+    cancellationTime         timestamp default null,
     eventStatus              varchar(255)  default null,
 
     message_id               varchar(255)  default null,
@@ -212,12 +212,12 @@ SELECT filterd.timetableStop_id,
        SUBSTRING_INDEX(plannedArrivalPath, '|', 0)                       AS start,
        trainCategory,
        trainNumber,
-       departingLine,
+       arrivingLine,
        rstops.plannedArrival,
        changedArrivalTime,
        cancellationTime,
        eventStatus,
-       TIMESTAMPDIFF(MINUTE, rstops.plannedArrival, changedArrivalTime) AS departure_delay,
+       TIMESTAMPDIFF(MINUTE, rstops.plannedArrival, changedArrivalTime) AS arrival_delay,
 
        CASE
            WHEN trainCategory = 'HLB' THEN 'Hessische Landesbahn'

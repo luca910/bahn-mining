@@ -1,5 +1,3 @@
-USE bahn;
-
 WITH verspätungen AS (
     SELECT *
     FROM bahn.dp_superquery

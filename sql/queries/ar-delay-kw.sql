@@ -1,5 +1,3 @@
-USE bahn;
-
 WITH verspätungen AS (
     SELECT *
     FROM bahn.ar_superquery

@@ -1,0 +1,43 @@
+-- Step 1: Dynamically construct the SELECT clause
+SET @sql = NULL;
+
+SELECT
+    GROUP_CONCAT(
+        CONCAT(
+            "REPLACE(FORMAT(IFNULL(MAX(CASE WHEN Verbindung = '", Verbindung, "' THEN station_durchschnitt END), 0), 2), '.', ',') AS `", Verbindung, "`"
+        )
+    ) INTO @sql
+FROM (
+    SELECT DISTINCT Verbindung
+    FROM bahn.dp_superquery
+    WHERE departure_delay > 0
+) AS subquery;
+
+-- Step 2: Create the final query by embedding the dynamic part
+SET @final_sql = CONCAT(
+    "WITH verspätungen AS (
+        SELECT *
+        FROM bahn.dp_superquery
+        WHERE departure_delay > 0
+    ),
+    station_durchschnitte AS (
+        SELECT
+            week_number,
+            Verbindung,
+            AVG(departure_delay) AS station_durchschnitt
+        FROM verspätungen
+        GROUP BY week_number, Verbindung
+    )
+    SELECT
+        week_number AS `Woche`,
+        REPLACE(FORMAT(AVG(station_durchschnitt), 2), '.', ',') AS `Gesamt`, ",  -- Format Gesamt column
+    @sql,
+    " FROM station_durchschnitte
+    GROUP BY week_number
+    ORDER BY week_number;"
+);
+
+-- Step 3: Prepare and execute the query
+PREPARE stmt FROM @final_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

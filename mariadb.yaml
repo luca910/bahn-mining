@@ -24,3 +24,13 @@ services:
         reservations:
           memory: 2g       # Reserve 2 GB of RAM for MariaDB
           cpus: "1"        # Reserve 1 vCPU for MariaDB
+
+  jupyter:
+    image: jupyter/datascience-notebook:latest
+    container_name: jupyter
+    ports:
+      - "8888:8888"
+      - "8889:8889"
+    volumes:
+      - ./:/home/jovyan/work
+

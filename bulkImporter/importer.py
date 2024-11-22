@@ -1,3 +1,4 @@
+import logging
 import sys
 import xml.etree.ElementTree as ET
 import os
@@ -8,14 +9,19 @@ import pymysql
 
 # Connect to the MySQL database
 connection = pymysql.connect(
-    host='localhost',
+    host=os.environ.get('DB_HOST', 'localhost'),
     user='root',
     password='root',
     database='bahn'
 )
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+logging.info(connection.ping())
 
 def calcSqlTimestamp(string):
+    if string is None:
+        return None
 
     dt = datetime.strptime(string, '%y%m%d%H%M')
 
@@ -26,13 +32,15 @@ def calcSqlTimestamp(string):
 def importPlanneds():
 
     files = os.listdir(path)
-    # Iterate over each file
     for file in files:
+
         # Check if the file is an XML file
         if file.startswith('api_response_') and not file.endswith('fchg.xml'):
             print(path+'/'+file)
             # Import the XML file
             importPlanned(path+'/'+file)
+            os.rename(path+'/'+file, path+'/imported/'+file)
+            logging.info("moved file"+path+'/'+file + " to "+path+'/imported/'+file)
             print(f"Imported {file}")
 
 def importPlanned(path):
@@ -87,6 +95,8 @@ def importChanges():
             print(path+'/'+file)
             # Import the XML file
             importChanged(path+'/'+file)
+            os.rename(path+'/'+file, path+'/imported/'+file)
+            logging.info("moved file"+path+'/'+file + " to "+path+'/imported/'+file)
             print(f"Imported {file}")
 
 def importChanged(path):
@@ -183,12 +193,25 @@ def importChanged(path):
 
     connection.commit()
 
+
 for arg in sys.argv[1:]:
     path = arg
-    importPlanneds()
+    #check if path is a directory
+    if not os.path.isdir(path):
+        logging.info("Path is not a directory")
+    if path.endswith('imported'):
+        logging.info("Path is the imported directory")
+    else:
+        if os.path.exists(path+'/imported'):
+            logging.info("Imported directory already exists")
+        else:
+            os.mkdir(path+'/imported')
+        importPlanneds()
 
-    importChanges()
+        importChanges()
+
 
 
 #importXML("db-import/api_response_Trier_Hbf_20241103_162655_plan16.xml")
+
 connection.close()

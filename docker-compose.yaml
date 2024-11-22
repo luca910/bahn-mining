@@ -1,17 +1,71 @@
-version: '3'
+version: '3.8'
 
 services:
   db-xml-fetcher:
-    build: .
+    build: ./fetcher
     container_name: db-xml-fetcher
+    environment:
+      - DB_CLIENT_SECRET=553fb84cbacdebf5cee39fc8183becd8
+      - DB_CLIENT_ID=a0af6d6495360d6eb1965e82c8ca0afe
     volumes:
-      - storage:/app/output    # Maps the ./output folder on the host to /app/output in the container
+      - /Volumes/Luca.m2/comp:/app/out
     restart: unless-stopped     # Automatically restart the container unless stopped manually
 
-volumes:
-  storage:
-    driver: local
-    driver_opts:
-      type: cifs
-      o: username=docker,password=${NAS_PASSWORD},uid=999,gid=999,file_mode=0700,dir_mode=0700,noperm,rw
-      device: "//172.16.12.75/docker/Bahnmining"
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bahn
+      MYSQL_USER: bahn
+      MYSQL_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "mariadb", "-uroot", "-proot", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+
+    ports:
+      - "3306:3306"
+    volumes:
+      - "./sql/database-setup.sql:/docker-entrypoint-initdb.d/1.sql"
+      - "/Volumes/Luca.m2/DHBW/Bahn Mining Projekt/volumes/mariadb:/var/lib/mysql"
+      - "./config/mariadb/my.cnf:/etc/mysql/my.cnf"  # Custom config for optimized performance
+    deploy:
+      resources:
+        limits:
+          memory: 6g       # Limit MariaDB container to use a max of 3 GB of RAM
+          cpus: "5"      # Limit container to use 1.5 vCPUs
+        reservations:
+          memory: 2g       # Reserve 2 GB of RAM for MariaDB
+          cpus: "1"        # Reserve 1 vCPU for MariaDB
+
+  import:
+    build: ./bulkImporter
+    container_name: importer
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      - DB_HOST=mariadb
+    volumes:
+      - /Volumes/Luca.m2/comp:/data
+      - ./out/query:/out
+
+
+  jupyter:
+    image: jupyter/datascience-notebook:latest
+    container_name: jupyter
+    ports:
+      - "8081:8888"
+      - "8443:8889"
+    environment:
+        - JUPYTER_ENABLE_LAB=yes
+        - JUPYTER_TOKEN=easy
+        - JUPYTER_PASSWORD=easy
+
+    volumes:
+      - ./:/home/jovyan/work
+
+
+
+

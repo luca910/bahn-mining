@@ -9,7 +9,7 @@ WITH superq AS (WITH filterd AS (SELECT DISTINCT departureMessages.timetableStop
                                                   latest_dp_messages.timetableStop_id
                                                    AND departureMessages.timeStamp = max_timestamp
                                                    AND fileTimestamp = latest_dp_messages.max_fileTimestamp
-                                 WHERE changedDepartureTime IS NOT NULL)
+                                 )
                 SELECT filterd.timetableStop_id,
                        station,
                        eva,
@@ -21,7 +21,11 @@ WITH superq AS (WITH filterd AS (SELECT DISTINCT departureMessages.timetableStop
                        changedDepartureTime,
                        cancellationTime,
                        eventStatus,
-                       TIMESTAMPDIFF(MINUTE, rstops.plannedDeparture, changedDepartureTime) AS departure_delay,
+                       TIMESTAMPDIFF(
+                           MINUTE,
+                               rstops.plannedDeparture,
+                               COALESCE(changedDepartureTime, rstops.plannedDeparture)
+                       ) AS departure_delay,
 
                        CASE
                            WHEN trainCategory = 'HLB' THEN 'Hessische Landesbahn'

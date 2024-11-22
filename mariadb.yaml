@@ -1,15 +1,29 @@
 version: '3.8'
 
 services:
+  db-xml-fetcher:
+    build: ./fetcher
+    container_name: db-xml-fetcher
+    environment:
+      - DB_CLIENT_SECRET=553fb84cbacdebf5cee39fc8183becd8
+      - DB_CLIENT_ID=a0af6d6495360d6eb1965e82c8ca0afe
+    volumes:
+      - /Volumes/Luca.m2/comp:/app/out
+    restart: unless-stopped     # Automatically restart the container unless stopped manually
+
   mariadb:
     image: mariadb:latest
     container_name: mariadb
-    platform: linux/arm64  # Explicitly target ARM64 for compatibility with M1 Pro
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: bahn
       MYSQL_USER: bahn
       MYSQL_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "mariadb", "-uroot", "-proot", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+
     ports:
       - "3306:3306"
     volumes:
@@ -25,6 +39,18 @@ services:
           memory: 2g       # Reserve 2 GB of RAM for MariaDB
           cpus: "1"        # Reserve 1 vCPU for MariaDB
 
+  import:
+    build: ./bulkImporter
+    container_name: importer
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      - DB_HOST=mariadb
+    volumes:
+      - /Volumes/Luca.m2/comp:/data
+
+
   jupyter:
     image: jupyter/datascience-notebook:latest
     container_name: jupyter
@@ -33,4 +59,7 @@ services:
       - "8889:8889"
     volumes:
       - ./:/home/jovyan/work
+
+
+
 

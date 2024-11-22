@@ -2,6 +2,7 @@ import requests
 import time
 import logging
 from datetime import datetime
+import os
 
 # API base URL
 base_url = 'https://apis.deutschebahn.com/db-api-marketplace/apis/timetables/v1/fchg/'
@@ -25,13 +26,14 @@ stations = {
 # API headers
 headers = {
     'accept': 'application/xml',
-    'DB-Api-Key': 'f824d3743fcd68a8be25fadfe6482c72',
-    'DB-Client-Id': 'cd8329b6d08c51ad68f63e830783bfbb'
+    'DB-Api-Key': os.environ.get('DB_CLIENT_SECRET'),
+    'DB-Client-Id': os.environ.get('DB_CLIENT_ID')
 }
+
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
 # Function to make the API request and save the XML response
 def fetch_and_save_data(station_code, station_name, api_type, api_url):
 

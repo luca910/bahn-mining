@@ -2,6 +2,7 @@
 # This script will generate a csv file from a sql view
 
 import csv
+import logging
 import os
 import sys
 import pymysql
@@ -14,8 +15,12 @@ connection = pymysql.connect(
     database='bahn'
 )
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Get the view name from the command line arguments
 view = sys.argv[1]
+
+logging.info(f"Generating csv for {view}")
 
 # Get the column names from the view
 with connection.cursor() as cursor:
@@ -30,10 +35,11 @@ with connection.cursor() as cursor:
     cursor.execute(f"SELECT * FROM {view}")
     data = cursor.fetchall()
 
-    # Write the data to a csv file
-    with open(f'{view}.csv', 'w') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(columnNames)
-        writer.writerows(data)
+with open(f'/out/{view}.csv', 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile, delimiter=';')
+    writer.writerow(columnNames)
+    writer.writerows(data)
 
-    print(f"Generated {view}.csv")
+    logging.info(f"Generated {view}.csv")
+
+connection.close()

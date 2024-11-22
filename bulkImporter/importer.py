@@ -36,12 +36,12 @@ def importPlanneds():
 
         # Check if the file is an XML file
         if file.startswith('api_response_') and not file.endswith('fchg.xml'):
-            print(path+'/'+file)
+            logging.info(path+'/'+file)
             # Import the XML file
             importPlanned(path+'/'+file)
             os.rename(path+'/'+file, path+'/imported/'+file)
             logging.info("moved file"+path+'/'+file + " to "+path+'/imported/'+file)
-            print(f"Imported {file}")
+            logging.info(f"Imported {file}")
 
 def importPlanned(path):
     # Parse XML file
@@ -92,12 +92,12 @@ def importChanges():
     for file in files:
         # Check if the file is an XML file
         if file.startswith('api_response_') and  file.endswith('fchg.xml'):
-            print(path+'/'+file)
+            logging.info(path+'/'+file)
             # Import the XML file
             importChanged(path+'/'+file)
             os.rename(path+'/'+file, path+'/imported/'+file)
             logging.info("moved file"+path+'/'+file + " to "+path+'/imported/'+file)
-            print(f"Imported {file}")
+            logging.info(f"Imported {file}")
 
 def importChanged(path):
     # Parse XML file
@@ -205,7 +205,8 @@ for arg in sys.argv[1:]:
         if os.path.exists(path+'/imported'):
             logging.info("Imported directory already exists")
         else:
-            os.mkdir(path+'/imported')
+            if os.path.isdir(path):
+                os.mkdir(path+'/imported')
         importPlanneds()
 
         importChanges()
@@ -215,3 +216,4 @@ for arg in sys.argv[1:]:
 #importXML("db-import/api_response_Trier_Hbf_20241103_162655_plan16.xml")
 
 connection.close()
+logging.info("Connection closed")

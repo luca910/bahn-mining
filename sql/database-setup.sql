@@ -137,57 +137,62 @@ where `rdeparturemessages`.`changedDepartureTime` is not null;*/
 #
 # Departure Superquery
 #
+
 create view dp_superquery as
 WITH filterd AS (SELECT DISTINCT departureMessages.timetableStop_id,
-                                                 eva,
-                                                 changedDepartureTime,
-                                                 cancellationTime,
-                                                 eventStatus
-                                 FROM departureMessages
-                                          JOIN latest_dp_messages
-                                               ON departureMessages.timetableStop_id =
-                                                  latest_dp_messages.timetableStop_id
-                                                   AND departureMessages.timeStamp = max_timestamp
-                                                   AND fileTimestamp = latest_dp_messages.max_fileTimestamp
-                                 WHERE changedDepartureTime IS NOT NULL)
-                SELECT filterd.timetableStop_id,
-                       station,
-                       eva,
-                       SUBSTRING_INDEX(plannedDeparturePath, '|', -1)                       AS target,
-                       trainCategory,
-                       trainNumber,
-                       departingLine,
-                       rstops.plannedDeparture,
-                       changedDepartureTime,
-                       cancellationTime,
-                       eventStatus,
-                       TIMESTAMPDIFF(MINUTE, rstops.plannedDeparture, changedDepartureTime) AS departure_delay,
+                                 eva,
+                                 changedDepartureTime,
+                                 cancellationTime,
+                                 eventStatus
+                 FROM departureMessages
+                          JOIN latest_dp_messages
+                               ON departureMessages.timetableStop_id =
+                                  latest_dp_messages.timetableStop_id
+                                   AND departureMessages.timeStamp = max_timestamp
+                                   AND fileTimestamp = latest_dp_messages.max_fileTimestamp
+)
+SELECT filterd.timetableStop_id,
+       station,
+       eva,
+       SUBSTRING_INDEX(plannedDeparturePath, '|', -1)                       AS target,
+       trainCategory,
+       trainNumber,
+       departingLine,
+       rstops.plannedDeparture,
+       changedDepartureTime,
+       cancellationTime,
+       eventStatus,
+       TIMESTAMPDIFF(
+               MINUTE,
+               rstops.plannedDeparture,
+               COALESCE(changedDepartureTime, rstops.plannedDeparture)
+       ) AS departure_delay,
 
-                       CASE
-                           WHEN trainCategory = 'HLB' THEN 'Hessische Landesbahn'
-                           WHEN trainCategory = 'VIA' THEN 'VIAS GmbH'
-                           WHEN trainCategory IN ('RB', 'RE', 'BUS', 'N', 'S') THEN 'DB Regio AG'
-                           WHEN trainCategory IN ('ICE', 'IC') THEN 'DB Fernverkehr AG'
-                           WHEN trainCategory = 'TGV' THEN 'SNCF'
-                           WHEN trainCategory = 'NJ' THEN 'ÖBB'
-                           WHEN trainCategory = 'EC' THEN 'ÖBB'
-                           WHEN trainCategory = 'RJ' THEN 'ÖBB'
-                           WHEN trainCategory = 'EN' THEN 'ÖBB'
-                           WHEN trainCategory = 'R' THEN 'ÖBB'
-                           WHEN trainCategory = 'ALX' THEN 'Arriva'
-                           WHEN trainCategory = 'FLX' THEN 'Flixtrain'
-                           ELSE 'Other'
-                           END                                                              AS operator,
-                       CASE
-                           WHEN departingLine REGEXP '^[A-Z]' THEN departingLine
-                           WHEN departingLine is null THEN concat(station, '-',
-                                                                  SUBSTRING_INDEX(plannedDeparturePath, '|', -1))
-                           ELSE CONCAT(rstops.trainCategory, departingLine)
-                           END                                                              AS Verbindung,
-                       WEEK(changedDepartureTime)                                           AS week_number
-                FROM filterd
-                         JOIN rstops
-                              ON filterd.timetableStop_id = rstops.timetableStop_id;
+       CASE
+           WHEN trainCategory = 'HLB' THEN 'Hessische Landesbahn'
+           WHEN trainCategory = 'VIA' THEN 'VIAS GmbH'
+           WHEN trainCategory IN ('RB', 'RE', 'BUS', 'N', 'S') THEN 'DB Regio AG'
+           WHEN trainCategory IN ('ICE', 'IC') THEN 'DB Fernverkehr AG'
+           WHEN trainCategory = 'TGV' THEN 'SNCF'
+           WHEN trainCategory = 'NJ' THEN 'ÖBB'
+           WHEN trainCategory = 'EC' THEN 'ÖBB'
+           WHEN trainCategory = 'RJ' THEN 'ÖBB'
+           WHEN trainCategory = 'EN' THEN 'ÖBB'
+           WHEN trainCategory = 'R' THEN 'ÖBB'
+           WHEN trainCategory = 'ALX' THEN 'Arriva'
+           WHEN trainCategory = 'FLX' THEN 'Flixtrain'
+           ELSE 'Other'
+           END                                                              AS operator,
+       CASE
+           WHEN departingLine REGEXP '^[A-Z]' THEN departingLine
+           WHEN departingLine is null THEN concat(station, '-',
+                                                  SUBSTRING_INDEX(plannedDeparturePath, '|', -1))
+           ELSE CONCAT(rstops.trainCategory, departingLine)
+           END                                                              AS Verbindung,
+       WEEK(changedDepartureTime)                                           AS week_number
+FROM filterd
+         JOIN rstops
+              ON filterd.timetableStop_id = rstops.timetableStop_id;
 
 
 
@@ -207,7 +212,7 @@ WITH filterd AS (SELECT DISTINCT arrivalMessages.timetableStop_id,
                                   latest_ar_messages.timetableStop_id
                                    AND arrivalMessages.timeStamp = max_timestamp
                                    AND fileTimestamp = latest_ar_messages.max_fileTimestamp
-                 WHERE changedArrivalTime IS NOT NULL)
+)
 SELECT filterd.timetableStop_id,
        station,
        eva,
@@ -220,7 +225,11 @@ SELECT filterd.timetableStop_id,
        changedArrivalTime,
        cancellationTime,
        eventStatus,
-       TIMESTAMPDIFF(MINUTE, rstops.plannedArrival, changedArrivalTime) AS arrival_delay,
+       TIMESTAMPDIFF(
+               MINUTE,
+               rstops.plannedArrival,
+               COALESCE(changedArrivalTime, rstops.plannedArrival)
+       ) AS arrival_delay,
 
        CASE
            WHEN trainCategory = 'HLB' THEN 'Hessische Landesbahn'
@@ -246,4 +255,3 @@ SELECT filterd.timetableStop_id,
 FROM filterd
          JOIN rstops
               ON filterd.timetableStop_id = rstops.timetableStop_id;
-

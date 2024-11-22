@@ -17,9 +17,12 @@ done
 
 #repeat very 5 seconds
 while true; do
-  sleep 200
-  python importer.py "$MOUNTED_DIR" &
   echo "Running importer"
+  python importer.py "$MOUNTED_DIR" &
+  python generateCSVs.py ar_superquery &
+  python generateCSVs.py dp_superquery &
+  echo "Sleeping for 200 seconds..."
+  sleep 200
 done &
 
 

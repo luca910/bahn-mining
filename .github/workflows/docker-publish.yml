@@ -49,8 +49,8 @@ jobs:
         with:
           # Define multiple contexts and tags
           contexts: |
-            app1=./fetcher
-            app2=./bulkImporter
+            app1=./fetcher/Dockerfile
+            app2=./bulkImporter/Dockerfile
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-fetcher:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-importer:latest

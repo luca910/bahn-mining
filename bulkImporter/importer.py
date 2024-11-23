@@ -196,21 +196,17 @@ def importChanged(path):
 
 for arg in sys.argv[1:]:
     path = arg
-    #check if path is a directory
+    # Check if path is a directory
     if not os.path.isdir(path):
         logging.info("Path is not a directory")
+        continue
     if path.endswith('imported'):
         logging.info("Path is the imported directory")
-    else:
-        if os.path.exists(path+'/imported'):
-            logging.info("Imported directory already exists")
-        else:
-            if os.path.isdir(path):
-                os.mkdir(path+'/imported')
-        importPlanneds()
-
-        importChanges()
-
+        continue
+    if not os.path.exists(path + '/imported'):
+        os.mkdir(path + '/imported')
+    importPlanneds()
+    importChanges()
 
 
 #importXML("db-import/api_response_Trier_Hbf_20241103_162655_plan16.xml")

@@ -35,7 +35,7 @@ with connection.cursor() as cursor:
     cursor.execute(f"SELECT * FROM {view}")
     data = cursor.fetchall()
 
-with open(f'/db-results/{view}.csv', 'w', newline='') as csvfile:
+with open(f'/out/{view}.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile, delimiter=';')
     writer.writerow(columnNames)
     writer.writerows(data)

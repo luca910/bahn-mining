@@ -189,7 +189,7 @@ SELECT filterd.timetableStop_id,
                                                   SUBSTRING_INDEX(plannedDeparturePath, '|', -1))
            ELSE CONCAT(rstops.trainCategory, departingLine)
            END                                                              AS Verbindung,
-       WEEK(changedDepartureTime)                                           AS week_number
+       WEEK(plannedDeparture)                                           AS week_number
 FROM filterd
          JOIN rstops
               ON filterd.timetableStop_id = rstops.timetableStop_id;
@@ -251,7 +251,7 @@ SELECT filterd.timetableStop_id,
            WHEN arrivingLine is null THEN concat(SUBSTRING_INDEX(plannedArrivalPath, '|', 1), '-', station)
            ELSE CONCAT(rstops.trainCategory, arrivingLine)
            END                                                              AS Verbindung,
-       WEEK(changedArrivalTime)                                           AS week_number
+       WEEK(plannedArrival)                                           AS week_number
 FROM filterd
          JOIN rstops
               ON filterd.timetableStop_id = rstops.timetableStop_id;

@@ -193,7 +193,7 @@ Erstellt einen Liniengraph zu den Zuglinien
 
 
 ```python
-def plot_line_chart(data, title='', xlabel='', ylabel='', xsize=10, ysize=6):
+def plot_line_chart(data, title='', xlabel='', ylabel='', xsize=10, ysize=4):
     """
     Erstellt einen Liniengraphen für die Daten und stellt sicher, dass die X-Achse
     korrekt skaliert wird, abhängig davon, ob 'day_of_week' oder 'week_number' verwendet wird.
@@ -774,6 +774,66 @@ def calculate_cancellations_by_week(
 
 
 ```python
+def calculate_cancellation_statistics_by_train_type_and_station(data, train_types=None):
+    """
+    Berechnet die Statistik der Zugausfälle nach Zugart und Station basierend auf der cancellation_delay.
+    
+    :param data: DataFrame mit den Spalten 'eventStatus', 'cancellation_delay', 'station', und 'trainCategory'.
+    :param train_type: Liste von Zugarten, für die die Statistik berechnet werden soll. 
+                       Wenn None, wird für alle Zugarten berechnet.
+    :return: DataFrame mit den Kategorien (X), den Stationen und dem prozentualen Anteil (Y).
+    """
+    # Filter für ausgefallene Züge
+    cancelled_trains = data[data['eventStatus'] == 'c']
+    
+    # Filtern nach Zugarten, falls train_type angegeben ist
+    if train_types:
+        cancelled_trains = cancelled_trains[cancelled_trains['trainCategory'].isin(train_types)]
+    
+    # Überprüfen, ob es nach der Filterung noch Daten gibt
+    if cancelled_trains.empty:
+        print(f"Keine ausgefallenen Züge für die Zugart '{train_types}' gefunden." if train_types else "Keine ausgefallenen Züge gefunden.")
+        return None
+
+    # Kategorien für cancellation_delay definieren
+    categories = {
+        '> 120 min vorher': cancelled_trains['cancellation_delay'] <= -120,
+        '> 60 min vorher': (cancelled_trains['cancellation_delay'] > -120) & (cancelled_trains['cancellation_delay'] <= -60),
+        '> 30 min vorher': (cancelled_trains['cancellation_delay'] > -60) & (cancelled_trains['cancellation_delay'] <= -30),
+        '> 0 min vorher': (cancelled_trains['cancellation_delay'] > -30) & (cancelled_trains['cancellation_delay'] <= 0),
+        '< 30 min nachher': (cancelled_trains['cancellation_delay'] > 0) & (cancelled_trains['cancellation_delay'] <= 30),
+        '< 60 min nachher': (cancelled_trains['cancellation_delay'] > 30) & (cancelled_trains['cancellation_delay'] <= 60),
+        '> 60 min nachher': cancelled_trains['cancellation_delay'] > 60,
+    }
+
+    # Berechnung des Anteils der Kategorien pro Station
+    cancellation_stats = []
+    for station in cancelled_trains['station'].unique():
+        station_data = cancelled_trains[cancelled_trains['station'] == station]
+        
+        stats = {'station': station}
+        total_cancellations = len(station_data)
+        
+        for category, condition in categories.items():
+            stats[category] = condition[station_data.index].sum() / total_cancellations * 100
+        
+        cancellation_stats.append(stats)
+    
+    # Umwandlung der Statistik in einen DataFrame
+    stats_df = pd.DataFrame(cancellation_stats)
+    
+    # Reshape für die Darstellung der Kategorien in der Spalte 'X'
+    stats_df = pd.melt(stats_df, id_vars=['station'], var_name='X', value_name='Y')
+    
+    # Optional: Y-Werte runden
+    stats_df['Y'] = stats_df['Y'].apply(lambda x: round(x, 1))
+    
+    return stats_df
+
+```
+
+
+```python
 def plot_cancellations_by_week(data, x_column='X', y_column='Y', title='Ausfälle pro Kalenderwoche', 
                                x_axis_label='Kalenderwoche', y_axis_label='Verspätungsprozentsatz', 
                                palette='Set2', fig_size_x=10, fig_size_y=6):
@@ -937,6 +997,28 @@ def reorder_calculate_delay_by_line_and_day(df, filler='-'):
     return df_umstrukturiert
 ```
 
+
+```python
+def reorder_calculate_cancellation_statistics_by_train_type_and_station(df):
+    # Definieren der gewünschten Reihenfolge der Kategorien
+    categories_order = ['> 120 min vorher', '> 60 min vorher', '> 30 min vorher', '> 0 min vorher',
+                        '< 30 min nachher', '< 60 min nachher', '> 60 min nachher']
+    
+    # Umwandeln der 'X'-Spalte in einen Categorical-Typ mit der definierten Reihenfolge
+    df['X'] = pd.Categorical(df['X'], categories=categories_order, ordered=True)
+    
+    # Pivotieren der Tabelle, um die Stationen als Spalten und Kategorien als Zeilen zu erhalten
+    df_pivot = df.pivot_table(index='X', columns='station', values='Y', aggfunc='first')
+
+    # Ersetzen von NaN-Werten mit "-"
+    df_pivot = df_pivot.fillna("-")
+
+    # Zurücksetzen des Index
+    df_pivot.reset_index(inplace=True)
+
+    return df_pivot
+```
+
 # Kapitel: CSV Erstellung
 
 
@@ -1027,7 +1109,7 @@ percentage_delay_data = calculate_percentage_delay_by_category_and_station_x(
 )
 plot_bar_chart_by_category_and_station_x(
         data=percentage_delay_data,
-        title='Prozentuale Verspätung Ankommender Züge je Zugart pro Bahnhof (mehr als 5 Minuten)',
+        title='Prozentuale Verspätung ankommender Züge je Zugart pro Bahnhof (mehr als 5 Minuten)',
         x_axis_label='Zugart',
         y_axis_label='Anteil verpäteter Züge (%)',
         fig_size_x=12,
@@ -1037,13 +1119,13 @@ plot_bar_chart_by_category_and_station_x(
 #create_csv_calculate_percentage_delay_by_category_and_station_x(percentage_delay_data, "X.csv")
 reorder_percentage_delay_data = reorder_calculate_percentage_delay_by_category_and_station_x(percentage_delay_data, "-")
 print(reorder_percentage_delay_data)
-create_csv(reorder_percentage_delay_data, "out/01_Prozentuale Verspätung Ankommender Züge je Zugart pro Bahnhof.csv")
-ersetze_char_in_csv("out/01_Prozentuale Verspätung Ankommender Züge je Zugart pro Bahnhof.csv", ".", ",")
+create_csv(reorder_percentage_delay_data, "out/01_Prozentuale Verspätung ankommender Züge je Zugart pro Bahnhof.csv")
+ersetze_char_in_csv("out/01_Prozentuale Verspätung ankommender Züge je Zugart pro Bahnhof.csv", ".", ",")
 ```
 
 
     
-![png](README_files/README_37_0.png)
+![png](README_files/README_39_0.png)
     
 
 
@@ -1063,7 +1145,58 @@ ersetze_char_in_csv("out/01_Prozentuale Verspätung Ankommender Züge je Zugart 
     VIA                  48.78         -            -         -         43.58
 
 
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+      df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
+
+
+
+```python
+# 3. depature_percentage_delay_by_categorie_more_than_5.png
+percentage_delay_data = calculate_percentage_delay_by_category_and_station_x(
+    data=depature_filtered_data,
+    delay_threshold=5,  # Schwellenwert in Minuten
+    categories=["IC", "ICE", "RB", "RE", "S", "TGV", "VIA", "HLB", "N", "NJ", "FLX", "ECE"],
+    combine_all_categories=False
+)
+plot_bar_chart_by_category_and_station_x(
+        data=percentage_delay_data,
+        title='Prozentuale Verspätung abfahrender Züge je Zugart pro Bahnhof (mehr als 5 Minuten)',
+        x_axis_label='Zugart',
+        y_axis_label='Anteil verpäteter Züge (%)',
+        fig_size_x=12,
+        fig_size_y=6,
+        int_value=True,        # Bei Prozentualen Ausfällen muss es hier "False" sein
+    )
+#create_csv_calculate_percentage_delay_by_category_and_station_x(percentage_delay_data, "X.csv")
+reorder_percentage_delay_data = reorder_calculate_percentage_delay_by_category_and_station_x(percentage_delay_data, "-")
+print(reorder_percentage_delay_data)
+create_csv(reorder_percentage_delay_data, "out/02_Prozentuale Verspätung abfahrender Züge je Zugart pro Bahnhof.csv")
+ersetze_char_in_csv("out/02_Prozentuale Verspätung abfahrender Züge je Zugart pro Bahnhof.csv", ".", ",")
+```
+
+
+    
+![png](README_files/README_40_0.png)
+    
+
+
+    Banhöfe Frankfurt(Main)Hbf Mainz Hbf Mannheim Hbf Trier Hbf Wiesbaden Hbf
+    Zugart                                                                   
+    ECE                    0.0      37.5        11.11         -             -
+    FLX                      -       0.0            -         -             -
+    HLB                    9.3      84.0            -         -         27.39
+    IC                    12.0     47.36         50.0         -             -
+    ICE                  38.84     47.56        26.98         -          37.5
+    N                     27.9     55.03        16.09         -             -
+    NJ                   23.07      60.0        53.33         -             -
+    RB                   16.41     29.95          0.0     17.46           0.0
+    RE                   19.26      42.4        22.04     30.58             -
+    S                    32.35     32.04        26.75         -         24.03
+    TGV                    0.0         -        32.25         -             -
+    VIA                  25.88         -            -         -         28.77
+
+
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
       df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
 
 
@@ -1073,7 +1206,7 @@ ersetze_char_in_csv("out/01_Prozentuale Verspätung Ankommender Züge je Zugart 
 percentage_delay_data = calculate_percentage_delay_by_category_and_station_x(
     data=depature_filtered_data,
     delay_threshold=25,  # Schwellenwert in Minuten
-    categories=["IC", "ICE", "RB", "RE", "S", "VIA", "HLB", "N"],
+    categories=["IC", "ICE", "RB", "RE", "S", "TGV", "VIA", "HLB", "N", "NJ", "FLX", "ECE"],
     combine_all_categories=False
 )
 plot_bar_chart_by_category_and_station_x(
@@ -1082,34 +1215,38 @@ plot_bar_chart_by_category_and_station_x(
         x_axis_label='Zugart',
         y_axis_label='Wahrscheinlichkeit (%)',
         fig_size_x=9,
-        fig_size_y=5,
+        fig_size_y=4,
         int_value=True,        # Bei Prozentualen Ausfällen muss es hier "False" sein
     )
 reorder_percentage_delay_data = reorder_calculate_percentage_delay_by_category_and_station_x(percentage_delay_data, "-")
 print(reorder_percentage_delay_data)
-create_csv(reorder_percentage_delay_data, "out/02_Wahrscheinlichkeit zur Zugaufhebung.csv")
-ersetze_char_in_csv("out/02_Wahrscheinlichkeit zur Zugaufhebung.csv", ".", ",")
+create_csv(reorder_percentage_delay_data, "out/03_Wahrscheinlichkeit zur Zugaufhebung.csv")
+ersetze_char_in_csv("out/03_Wahrscheinlichkeit zur Zugaufhebung.csv", ".", ",")
 ```
 
 
     
-![png](README_files/README_38_0.png)
+![png](README_files/README_41_0.png)
     
 
 
-    Banhöfe  Frankfurt(Main)Hbf Mainz Hbf Mannheim Hbf Trier Hbf Wiesbaden Hbf
-    Zugart                                                                    
-    HLB                    0.00      12.0            -         -          2.73
-    IC                     2.00     36.84          0.0         -             -
-    ICE                   12.75     15.46         7.31         -          8.53
-    N                      1.16     12.08          0.0         -             -
-    RB                     2.84      1.68          0.0      1.03           0.0
-    RE                     3.19       9.8         2.44       3.8             -
-    S                      8.82      3.34         3.76         -          2.14
-    VIA                    3.19         -            -         -          4.91
+    Banhöfe Frankfurt(Main)Hbf Mainz Hbf Mannheim Hbf Trier Hbf Wiesbaden Hbf
+    Zugart                                                                   
+    ECE                    0.0       0.0          0.0         -             -
+    FLX                      -       0.0            -         -             -
+    HLB                    0.0      12.0            -         -          2.73
+    IC                     2.0     36.84          0.0         -             -
+    ICE                  12.75     15.46         7.31         -          8.53
+    N                     1.16     12.08          0.0         -             -
+    NJ                   15.38      50.0        26.66         -             -
+    RB                    2.84      1.68          0.0      1.03           0.0
+    RE                    3.19       9.8         2.44       3.8             -
+    S                     8.82      3.34         3.76         -          2.14
+    TGV                    0.0         -         6.45         -             -
+    VIA                   3.19         -            -         -          4.91
 
 
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
       df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
 
 
@@ -1118,7 +1255,7 @@ ersetze_char_in_csv("out/02_Wahrscheinlichkeit zur Zugaufhebung.csv", ".", ",")
 # 3. Verspätungsstatistik für eine Zugart berechnen
 ar_train_delay_data = calculate_delay_statistics_by_train_type_and_station_x(
     data=arrival_filtered_data,
-    train_type=["IC", "ICE", "RB", "RE", "S", "TGV"]     # Zugart (optional)
+    train_type=["IC", "ICE", "RB", "RE", "S", "TGV", "VIA", "HLB", "N", "NJ", "FLX", "ECE"]     # Zugart (optional)
 )
 plot_bar_chart_by_category_and_station_x(
         data=ar_train_delay_data,
@@ -1132,7 +1269,7 @@ plot_bar_chart_by_category_and_station_x(
 
 dp_train_delay_data = calculate_delay_statistics_by_train_type_and_station_x(
     data=depature_filtered_data,
-    train_type=["IC", "ICE", "RB", "RE", "S", "TGV"]     # Zugart (optional)
+    train_type=["IC", "ICE", "RB", "RE", "S", "TGV", "VIA", "HLB", "N", "NJ", "FLX", "ECE"]     # Zugart (optional)
 )
 plot_bar_chart_by_category_and_station_x(
         data=dp_train_delay_data,
@@ -1145,31 +1282,31 @@ plot_bar_chart_by_category_and_station_x(
     )
 ar_train_delay_data = reorder_calculate_delay_statistics_by_train_type_and_station_x(ar_train_delay_data, "-")
 dp_train_delay_data = reorder_calculate_delay_statistics_by_train_type_and_station_x(dp_train_delay_data, "-")
-create_csv(ar_train_delay_data, "out/03_Verspätungskategorien aller ankommenden Züge pro Bahnhof.csv")
-ersetze_char_in_csv("out/03_Verspätungskategorien aller ankommenden Züge pro Bahnhof.csv", ".", ",")
-create_csv(dp_train_delay_data, "out/04_Verspätungskategorien aller abfahrenden Züge pro Bahnhof.csv")
-ersetze_char_in_csv("out/04_Verspätungskategorien aller abfahrenden Züge pro Bahnhof.csv", ".", ",")
+create_csv(ar_train_delay_data, "out/04_Verspätungskategorien aller ankommenden Züge pro Bahnhof.csv")
+ersetze_char_in_csv("out/04_Verspätungskategorien aller ankommenden Züge pro Bahnhof.csv", ".", ",")
+create_csv(dp_train_delay_data, "out/05_Verspätungskategorien aller abfahrenden Züge pro Bahnhof.csv")
+ersetze_char_in_csv("out/05_Verspätungskategorien aller abfahrenden Züge pro Bahnhof.csv", ".", ",")
 ```
 
 
     
-![png](README_files/README_39_0.png)
+![png](README_files/README_42_0.png)
     
 
 
 
     
-![png](README_files/README_39_1.png)
+![png](README_files/README_42_1.png)
     
 
 
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/1920162383.py:27: FutureWarning: The default value of observed=False is deprecated and will change to observed=True in a future version of pandas. Specify observed=False to silence this warning and retain the current behavior
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/1920162383.py:27: FutureWarning: The default value of observed=False is deprecated and will change to observed=True in a future version of pandas. Specify observed=False to silence this warning and retain the current behavior
       df_pivot = df.pivot_table(index='Kategorie', columns='Banhöfe', values='Y', aggfunc='first')
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/1920162383.py:27: FutureWarning: The default value of observed=False is deprecated and will change to observed=True in a future version of pandas. Specify observed=False to silence this warning and retain the current behavior
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/1920162383.py:27: FutureWarning: The default value of observed=False is deprecated and will change to observed=True in a future version of pandas. Specify observed=False to silence this warning and retain the current behavior
       df_pivot = df.pivot_table(index='Kategorie', columns='Banhöfe', values='Y', aggfunc='first')
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
       df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
       df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
 
 
@@ -1183,25 +1320,25 @@ result = calculate_cancellations_by_train_type_and_station(
 )
 plot_bar_chart_by_category_and_station_x(
         data=result,
-        title='Anteil ausgefallener Züge',
+        title='Anteil ausgefallener Züge (%)',
         x_axis_label='Zugart',
         y_axis_label='Ausfallanteil (%)',
-        fig_size_x=9,
+        fig_size_x=10,
         fig_size_y=5,
-        int_value=False,        # Bei Prozentualen Ausfällen muss es hier "False" sein
+        int_value=True,        # Bei Prozentualen Ausfällen muss es hier "False" sein
     )
 result = reorder_calculate_percentage_delay_by_category_and_station_x(result, "-")
-create_csv(result, "out/05_Anteil ausgefallener Züge (%).csv")
-ersetze_char_in_csv("out/05_Anteil ausgefallener Züge (%).csv", ".", ",")
+create_csv(result, "out/06_Anteil ausgefallener Züge (%).csv")
+ersetze_char_in_csv("out/06_Anteil ausgefallener Züge (%).csv", ".", ",")
 ```
 
 
     
-![png](README_files/README_40_0.png)
+![png](README_files/README_43_0.png)
     
 
 
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
       df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
 
 
@@ -1209,7 +1346,7 @@ ersetze_char_in_csv("out/05_Anteil ausgefallener Züge (%).csv", ".", ",")
 ```python
 # arrival data
 cancellation_data_by_station = calculate_cancellations_by_operator_and_station(
-    arrival_filtered_data,
+    depature_filtered_data,
     operators=["DB Fernverkehr AG", "DB Regio AG", "Flixtrain", "Hessische Landesbahn", "VIAS GmbH"],       # z. B. "DB Fernverkehr AG"
     calculate_percentage=True
 )
@@ -1223,17 +1360,17 @@ plot_bar_chart_by_category_and_station_x(
         int_value=False,        # Bei Prozentualen Ausfällen muss es hier "False" sein
     )
 cancellation_data_by_station = reorder_calculate_cancellations_by_operator_and_station(cancellation_data_by_station, "-")
-create_csv(cancellation_data_by_station, "out/06_Ausfälle pro Betreiber (%).csv")
-ersetze_char_in_csv("out/06_Ausfälle pro Betreiber (%).csv", ".", ",")
+create_csv(cancellation_data_by_station, "out/07_Ausfälle pro Betreiber (%).csv")
+ersetze_char_in_csv("out/07_Ausfälle pro Betreiber (%).csv", ".", ",")
 ```
 
 
     
-![png](README_files/README_41_0.png)
+![png](README_files/README_44_0.png)
     
 
 
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
       df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
 
 
@@ -1292,17 +1429,17 @@ delay_by_line_and_day = calculate_delay_by_line_and_day(
 )
 plot_line_chart(delay_by_line_and_day, title="Durchschnittliche Verspätung des RE1 (in Minuten)", xlabel="Wochentag", ylabel="Minuten")
 delay_by_line_and_day = reorder_calculate_delay_by_line_and_day(delay_by_line_and_day)
-create_csv(delay_by_line_and_day, "out/07_Durchschnittliche Verspätung des RE1 (in Minuten).csv")
-ersetze_char_in_csv("out/07_Durchschnittliche Verspätung des RE1 (in Minuten).csv", ".", ",")
+create_csv(delay_by_line_and_day, "out/08_Durchschnittliche Verspätung des RE1 (in Minuten).csv")
+ersetze_char_in_csv("out/08_Durchschnittliche Verspätung des RE1 (in Minuten).csv", ".", ",")
 ```
 
 
     
-![png](README_files/README_43_0.png)
+![png](README_files/README_46_0.png)
     
 
 
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
       df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
 
 
@@ -1319,14 +1456,81 @@ cancelldation_by_line_and_day = calculate_cancellations_by_line_and_day(
 #plot_line_chart(cancelldation_by_line_and_day, title="Ausfälle des RE1", xlabel="Wochentag", ylabel="Anzahl")
 ```
 
-    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_20293/3418611152.py:49: FutureWarning: The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3418611152.py:49: FutureWarning: The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
       cancelled_trains = cancelled_data.groupby(["station", group_by]).size().reset_index(name="cancelled_trains")
 
 
 
 ```python
+# depature_cancellation_time_by_categorie_short-distance
+result = calculate_cancellation_statistics_by_train_type_and_station(
+    data = depature_filtered_data,
+    train_types=["RB", "RE", "S", "VIA", "HLB", "N"]
+)
+plot_bar_chart_by_category_and_station_x(
+        data=result,
+        title='Zeitpunkt der Ausfallbekanntgabe für Nahverkehrszüge nach Kategorien',
+        x_axis_label='Kategorie',
+        y_axis_label='Ausfallanteil (%)',
+        fig_size_x=13,
+        fig_size_y=5,
+        int_value=False,        # Bei Prozentualen Ausfällen muss es hier "False" sein
+    )
+
+# Tabelle sortieren
+sorted_df = reorder_calculate_cancellation_statistics_by_train_type_and_station(result)
+create_csv(sorted_df, "out/09_Zeitpunkt der Ausfallbekanntgabe für Nahverkehrszüge.csv")
+ersetze_char_in_csv("out/09_Zeitpunkt der Ausfallbekanntgabe für Nahverkehrszüge.csv", ".", ",")
+```
 
 
+    
+![png](README_files/README_48_0.png)
+    
+
+
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/1657369058.py:10: FutureWarning: The default value of observed=False is deprecated and will change to observed=True in a future version of pandas. Specify observed=False to silence this warning and retain the current behavior
+      df_pivot = df.pivot_table(index='X', columns='station', values='Y', aggfunc='first')
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+      df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
+
+
+
+```python
+# depature_cancellation_time_by_categorie_long-distance
+result = calculate_cancellation_statistics_by_train_type_and_station(
+    data = depature_filtered_data,
+    train_types=["IC", "ICE", "TGV", "NJ", "FLX", "ECE"]
+)
+plot_bar_chart_by_category_and_station_x(
+        data=result,
+        title='Zeitpunkt der Ausfallbekanntgabe für Fernverkehrszüge nach Kategorien',
+        x_axis_label='Kategorie',
+        y_axis_label='Ausfallanteil (%)',
+        fig_size_x=13,
+        fig_size_y=5,
+        int_value=False,        # Bei Prozentualen Ausfällen muss es hier "False" sein
+    )
+# Tabelle sortieren
+sorted_df = reorder_calculate_cancellation_statistics_by_train_type_and_station(result)
+create_csv(sorted_df, "out/10_Zeitpunkt der Ausfallbekanntgabe für Fernverkehrszüge.csv")
+ersetze_char_in_csv("out/10_Zeitpunkt der Ausfallbekanntgabe für Fernverkehrszüge.csv", ".", ",")
+```
+
+
+    
+![png](README_files/README_49_0.png)
+    
+
+
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/1657369058.py:10: FutureWarning: The default value of observed=False is deprecated and will change to observed=True in a future version of pandas. Specify observed=False to silence this warning and retain the current behavior
+      df_pivot = df.pivot_table(index='X', columns='station', values='Y', aggfunc='first')
+    /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/ipykernel_24530/3162237569.py:14: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+      df = df.applymap(lambda x: str(x).replace(alter_char, neuer_char) if isinstance(x, str) else x)
+
+
+
+```python
 # Directory containing the CSV files
 csv_directory = './out'  # Replace with your CSV directory path
 output_excel_file = './out/output.xlsx'  # Name of the output Excel file
@@ -1334,7 +1538,9 @@ output_excel_file = './out/output.xlsx'  # Name of the output Excel file
 # Create a new Excel writer object
 with pd.ExcelWriter(output_excel_file, engine='openpyxl') as writer:
     # Loop through all files in the directory
-    for file_name in os.listdir(csv_directory):
+    dir = os.listdir(csv_directory)
+    dir.sort()
+    for file_name in dir:
         # Check if the file is a CSV
         if file_name.endswith('.csv'):
             file_path = os.path.join(csv_directory, file_name)
@@ -1342,8 +1548,11 @@ with pd.ExcelWriter(output_excel_file, engine='openpyxl') as writer:
             # Read the CSV file into a DataFrame
             df = pd.read_csv(file_path, sep=';', decimal=',')
 
+
+            print(df)
+
             # Use the file name (without extension) as the sheet name
-            sheet_name = os.path.splitext(file_name[0:29])[0]
+            sheet_name = file_name
 
             # Write the DataFrame to a new sheet in the Excel file
             df.to_excel(writer, sheet_name=sheet_name, index=False)
@@ -1352,15 +1561,162 @@ print(f"All CSV files have been combined into {output_excel_file}")
 
 ```
 
+       Zugart Frankfurt(Main)Hbf Mainz Hbf Mannheim Hbf Trier Hbf Wiesbaden Hbf
+    0     ECE               25,0      37,5         20,0         -             -
+    1     FLX                  -     33,33            -         -             -
+    2     HLB              44,37     81,81            -         -         35,54
+    3      IC              57,69     52,94        33,33         -             -
+    4     ICE              48,74     55,46        31,71         -         36,08
+    5       N              49,29     44,96        65,88         -             -
+    6      NJ              71,42      60,0        66,66         -             -
+    7      RB              30,94     46,93         20,0     23,63         42,85
+    8      RE              48,73     53,49        32,64     28,52             -
+    9       S              52,63     41,66        45,55         -         35,18
+    10    TGV               50,0         -        37,03         -             -
+    11    VIA              48,78         -            -         -         43,58
+       Zugart Frankfurt(Main)Hbf Mainz Hbf Mannheim Hbf Trier Hbf Wiesbaden Hbf
+    0     ECE                0,0      37,5        11,11         -             -
+    1     FLX                  -       0,0            -         -             -
+    2     HLB                9,3      84,0            -         -         27,39
+    3      IC               12,0     47,36         50,0         -             -
+    4     ICE              38,84     47,56        26,98         -          37,5
+    5       N               27,9     55,03        16,09         -             -
+    6      NJ              23,07      60,0        53,33         -             -
+    7      RB              16,41     29,95          0,0     17,46           0,0
+    8      RE              19,26      42,4        22,04     30,58             -
+    9       S              32,35     32,04        26,75         -         24,03
+    10    TGV                0,0         -        32,25         -             -
+    11    VIA              25,88         -            -         -         28,77
+       Zugart Frankfurt(Main)Hbf Mainz Hbf Mannheim Hbf Trier Hbf Wiesbaden Hbf
+    0     ECE                0,0       0,0          0,0         -             -
+    1     FLX                  -       0,0            -         -             -
+    2     HLB                0,0      12,0            -         -          2,73
+    3      IC                2,0     36,84          0,0         -             -
+    4     ICE              12,75     15,46         7,31         -          8,53
+    5       N               1,16     12,08          0,0         -             -
+    6      NJ              15,38      50,0        26,66         -             -
+    7      RB               2,84      1,68          0,0      1,03           0,0
+    8      RE               3,19       9,8         2,44       3,8             -
+    9       S               8,82      3,34         3,76         -          2,14
+    10    TGV                0,0         -         6,45         -             -
+    11    VIA               3,19         -            -         -          4,91
+       Kategorie  Frankfurt(Main)Hbf  Mainz Hbf  Mannheim Hbf  Trier Hbf  \
+    0   < 10 min                52.9       63.1          70.1       78.8   
+    1   < 30 min                33.3       26.8          22.9       17.7   
+    2   < 60 min                 9.6        8.2           5.3        3.0   
+    3  < 120 min                 3.5        1.6           1.4        0.6   
+    4  > 120 min                 0.7        0.3           0.2        0.0   
+    
+       Wiesbaden Hbf  
+    0           70.5  
+    1           24.9  
+    2            3.8  
+    3            0.7  
+    4            0.2  
+       Kategorie  Frankfurt(Main)Hbf  Mainz Hbf  Mannheim Hbf  Trier Hbf  \
+    0   < 10 min                73.6       68.1          77.5       79.1   
+    1   < 30 min                18.1       22.8          16.3       18.2   
+    2   < 60 min                 5.8        7.6           4.5        2.6   
+    3  < 120 min                 2.1        1.3           1.4        0.1   
+    4  > 120 min                 0.3        0.2           0.2        0.0   
+    
+       Wiesbaden Hbf  
+    0           74.7  
+    1           19.8  
+    2            4.3  
+    3            0.9  
+    4            0.3  
+       Zugart Frankfurt(Main)Hbf Mainz Hbf Mannheim Hbf Trier Hbf Wiesbaden Hbf
+    0     ECE                0,0      12,5          0,0         -             -
+    1     FLX                  -       0,0            -         -             -
+    2     HLB               8,26       0,0            -         -           4,1
+    3      IC               17,0      5,26        16,66         -             -
+    4     ICE               5,75      9,74         5,35         -          7,92
+    5       N               18,6      3,35         6,89         -             -
+    6      NJ                0,0      6,66          0,0         -             -
+    7      RB              16,19      9,28         25,0      3,53           0,0
+    8      RE               4,04      4,65         3,26      3,32             -
+    9       S              35,29       5,8         3,64         -         12,87
+    10    TGV              100,0         -          0,0         -             -
+    11    VIA              12,76         -            -         -         38,24
+                  Betreiber Frankfurt(Main)Hbf Mainz Hbf Mannheim Hbf Trier Hbf  \
+    0     DB Fernverkehr AG               6,33       9,6         5,42         -   
+    1           DB Regio AG               9,69       5,8         3,95      3,41   
+    2             Flixtrain                  -       0,0            -         -   
+    3  Hessische Landesbahn               8,26       0,0            -         -   
+    4             VIAS GmbH              12,76         -            -         -   
+    
+      Wiesbaden Hbf  
+    0          7,92  
+    1         12,82  
+    2             -  
+    3           4,1  
+    4         38,24  
+      day_of_week  Mannheim Hbf  Trier Hbf
+    0      Monday           7.8        7.2
+    1     Tuesday           3.1        7.5
+    2   Wednesday           5.4        5.8
+    3    Thursday           4.6        6.3
+    4      Friday           3.0        8.7
+    5    Saturday           3.8        3.7
+    6      Sunday           6.4       12.3
+       Unnamed: 0                 X  Frankfurt(Main)Hbf  Mainz Hbf  Mannheim Hbf  \
+    0           0  > 120 min vorher                62.6       29.1          31.1   
+    1           1   > 60 min vorher                 6.4        8.9          24.4   
+    2           2   > 30 min vorher                10.3       11.4           8.9   
+    3           3    > 0 min vorher                12.8       25.3          22.2   
+    4           4  < 30 min nachher                 5.9       13.9          11.1   
+    5           5  < 60 min nachher                 1.5        8.9           2.2   
+    6           6  > 60 min nachher                 0.5        2.5           0.0   
+    
+       Trier Hbf  Wiesbaden Hbf  
+    0       39.5           71.7  
+    1        7.9            4.8  
+    2       10.5            5.5  
+    3       21.1           13.1  
+    4       18.4            3.4  
+    5        0.0            1.4  
+    6        2.6            0.0  
+       Unnamed: 0                 X  Frankfurt(Main)Hbf  Mainz Hbf  Mannheim Hbf  \
+    0           0  > 120 min vorher                66.1       50.0          81.1   
+    1           1   > 60 min vorher                13.7       21.0           3.8   
+    2           2   > 30 min vorher                 8.1       17.7           9.4   
+    3           3    > 0 min vorher                 6.5        4.8           0.0   
+    4           4  < 30 min nachher                 3.2        3.2           3.8   
+    5           5  < 60 min nachher                 1.6        1.6           1.9   
+    6           6  > 60 min nachher                 0.8        1.6           0.0   
+    
+       Wiesbaden Hbf  
+    0           65.4  
+    1           11.5  
+    2           11.5  
+    3            3.8  
+    4            0.0  
+    5            3.8  
+    6            3.8  
     All CSV files have been combined into ./out/output.xlsx
 
 
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
+    /Users/lucakrawczyk/GitHub-Repos/bahn-mining/.venv/lib/python3.9/site-packages/openpyxl/workbook/child.py:99: UserWarning: Title is more than 31 characters. Some applications may not be able to read the file
+      warnings.warn("Title is more than 31 characters. Some applications may not be able to read the file")
 
-```python
-
-```
 
 
-```python
-
-```

@@ -8,7 +8,7 @@ services:
       - DB_CLIENT_SECRET=${DB_CLIENT_SECRET}
       - DB_CLIENT_ID=${DB_CLIENT_ID}
     volumes:
-      - /Volumes/Luca.m2/comp:/app/out
+      - /Volumes/Luca.m2/comp:/app/out #Path to save XML-Files
     restart: unless-stopped     # Automatically restart the container unless stopped manually
 
   mariadb:
@@ -29,13 +29,13 @@ services:
       - "3306:3306"
     volumes:
       - "./sql/database-setup.sql:/docker-entrypoint-initdb.d/1.sql"
-      - "/Volumes/Luca.m2/DHBW/Bahn Mining Projekt/volumes/mariadb:/var/lib/mysql"
+      - "/Volumes/Luca.m2/DHBW/Bahn Mining Projekt/volumes/mariadb:/var/lib/mysql" # Persist MariaDB data CHANGE THIS
       - "./config/mariadb/my.cnf:/etc/mysql/my.cnf"  # Custom config for optimized performance
     deploy:
       resources:
         limits:
-          memory: 6g       # Limit MariaDB container to use a max of 3 GB of RAM
-          cpus: "5"      # Limit container to use 1.5 vCPUs
+          memory: 6g
+          cpus: "5"
         reservations:
           memory: 2g       # Reserve 2 GB of RAM for MariaDB
           cpus: "1"        # Reserve 1 vCPU for MariaDB
@@ -49,7 +49,7 @@ services:
     environment:
       - DB_HOST=mariadb
     volumes:
-      - /Volumes/Luca.m2/comp:/data
+      - /Volumes/Luca.m2/comp:/data #Data to import
       - ./db-data:/out
 
 

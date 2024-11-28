@@ -167,6 +167,11 @@ SELECT filterd.timetableStop_id,
                rstops.plannedDeparture,
                COALESCE(changedDepartureTime, rstops.plannedDeparture)
        ) AS departure_delay,
+    TIMESTAMPDIFF(
+    MINUTE,
+    rstops.plannedDeparture,
+    cancellationTime
+    ) AS cancellation_delay,
 
        CASE
            WHEN trainCategory = 'HLB' THEN 'Hessische Landesbahn'
@@ -230,6 +235,11 @@ SELECT filterd.timetableStop_id,
                rstops.plannedArrival,
                COALESCE(changedArrivalTime, rstops.plannedArrival)
        ) AS arrival_delay,
+       TIMESTAMPDIFF(
+               MINUTE,
+               rstops.plannedDeparture,
+               cancellationTime
+       ) AS cancellation_delay,
 
        CASE
            WHEN trainCategory = 'HLB' THEN 'Hessische Landesbahn'

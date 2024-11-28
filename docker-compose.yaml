@@ -14,6 +14,7 @@ services:
   mariadb:
     image: mariadb:latest
     container_name: mariadb
+    #user: 501:20
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: bahn
@@ -49,7 +50,7 @@ services:
       - DB_HOST=mariadb
     volumes:
       - /Volumes/Luca.m2/comp:/data
-      - ./out/query:/out
+      - ./db-data:/out
 
 
   jupyter:
@@ -64,7 +65,7 @@ services:
         - JUPYTER_PASSWORD=easy
 
     volumes:
-      - ./:/home/jovyan/work
+      - ./:/home/jovyan/
 
 
 
